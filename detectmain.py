@@ -1,16 +1,16 @@
 from yolov5 import detect 
 import os
+from uploadimg import upload_file
+from servicenow import make_request
+from serverreq import update_flight
+import datetime
+
+# This script takes in the flightId and detects the trash in the given images 
+# Once it does that it uploads all the images to amazon S3 and adds the image urls to Flight in server
 
 
-# Make request to Service Now
-def make_request(imgpath):
-    print("Making a request in servicenow for img ",imgpath)
-    # 11092002;12:34:basketballcourt.jpeg
-    # {
-    #    "date"
-    #    "time"
-    #     "location" 
-    # }
+
+flight_id=input("Enter a Flight ID")
 
 # Input Image Size
 imgsz=(3904,5184)
@@ -19,7 +19,7 @@ imgsz=(3904,5184)
 conf_threshold=0.6
 
 # Custom Weights
-weights='C:\\Users\\dasoj\\OneDrive\\Desktop\\drone\\yolov5\\bestweights\\best.pt'
+weights=os.getcwd()+'\\yolov5\\bestweights\\best.pt'
 
 # Labels in text file
 save_txt=True
@@ -31,13 +31,13 @@ save_conf=True
 line_thickness=3
 
 # minimum number of trash items to be considered to be added to dataset
-trash_count=10
+trash_count=3
 
 #GPU Number 
 cuda_device=0
 
 # Image Source
-source="C:\\Users\\dasoj\\OneDrive\\Desktop\\drone\\images"
+source=os.getcwd()+"\\images"
 
 # Check if all packages are installed for YOLO
 detect.check_requirements(exclude=('tensorboard', 'thop'))
@@ -45,9 +45,29 @@ detect.check_requirements(exclude=('tensorboard', 'thop'))
 # Run prediction using YOLO and the above mentioned parameters
 predicted_list= detect.run(imgsz=imgsz,device=cuda_device,conf_thres=conf_threshold,weights=weights,save_txt=save_txt,save_conf=save_conf,line_thickness=line_thickness,source=source)
 
+request_body=[]
+
+count =0
+
 # get all the predicted images and 
 for prediction in predicted_list:
     if(prediction["n_labels"]>trash_count):
-        imgpath=os.getcwd()+"\\yolov5\\"+prediction['img_path']
-        make_request(imgpath=imgpath)
+        print("Uploading File",count," and making a request to service now")
+        imgpath=os.getcwd()+"\\"+prediction['img_path']
+        imgurl=upload_file(flightid=flight_id,file_path=imgpath)
+        body={
+            "flight_id":flight_id,
+            "date":str(datetime.datetime.now()),
+            "detect":prediction["n_labels"],
+            "main_url":imgurl
+        }
+        request_body.append(body)
+        print("Done for image",count)
+        count+=1
+
+
+# Make a request to sever to add images 
+update_flight(body=request_body)
+
         
+

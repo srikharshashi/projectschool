@@ -10,7 +10,7 @@ import datetime
 
 
 
-flight_id=input("Enter a Flight ID")
+flight_id=input("Enter a Flight ID ")
 
 # Input Image Size
 imgsz=(3904,5184)
@@ -62,6 +62,8 @@ for prediction in predicted_list:
             "main_url":imgurl
         }
         request_body.append(body)
+        print("Making a request in ServiceNow")
+        make_request(prediction["n_labels"],os.path.basename(imgpath))
         print("Done for image",count)
         count+=1
 
